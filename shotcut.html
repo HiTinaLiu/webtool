@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>自由切图</title>
+    <style media="screen">
+      ul {
+        padding:0;
+        margin:0;
+      }
+      ul li{
+        list-style: none;
+      }
+      .container{
+        display:flex;
+        width:100vw;
+        /* height:100vh; */
+        min-height: 100vh;
+        background:#ccc;
+        flex-direction:row;
+      }
+
+      .left{
+        display:flex;
+        /* padding:20px; */
+        flex:4;
+        flex-direction: column;
+
+        padding: 10px;
+      }
+
+      .right{
+        display:flex;
+        flex:1;
+        background:#6c757d;
+      }
+
+      .mainImg{
+          display:table-cell;
+          vertical-align: middle;
+          text-align:center;
+      }
+
+      .upload{
+        height: 15vh;
+        display: flex;
+        align-items: center;
+      }
+
+      .uploadImgBtn,.saveImgBtn,.randomBtn,.select_mode{
+        height: 38px;
+        width: 80px;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+        color: white;
+        background: #6c757d;
+      }
+
+      .uploadImgBtn:hover,.saveImgBtn:hover,.randomBtn:hover,.select_mode:hover{
+          background: #024c0b;
+      }
+
+      .mainImg_O{
+        width: 800px;
+        height:500px;
+        /* clip-path: url(#svgPath); */
+      }
+      .smallImg{
+        padding: 5px;
+        width: 95%;
+      }
+      .shotCutList{
+            /* height: 100vh; */
+            overflow-y: scroll;
+      }
+
+      #c1{
+        display: none;
+      }
+      /* .imglist{
+        overflow-y: scroll;
+        overflow-x: hidden;
+      } */
+      .main_imglist{
+        position: relative;
+      }
+    </style>
+    <!-- <script src="./libs/d3-delaunay.js" charset="utf-8"></script> -->
+    <script type="text/javascript">
+      // var oC = null;
+      // var H = 675;
+      // var W = 675;
+      // window.onresize = function(){
+      //   H = document.documentElement.clientWidth *0.8;
+      //   W = document.documentElement.clientWidth *0.8;
+      //   if(oC && H && W){
+      //     oC.height = H;
+      //     oC.width = W;
+      //   }
+      //   console.log("resize",H,W);
+      // }
+
+      // window.onresize();
+      window.onload= function(){
+        let uploadBtn = document.querySelector(".uploadImgBtn");
+        let randomBtn = document.querySelector(".randomBtn");
+        let saveImgBtn = document.querySelector(".saveImgBtn");
+        let uploadImg = document.querySelector(".uploadImg");
+        let mainImg = document.querySelector(".mainImg");
+        let imglist = document.querySelector(".imglist");
+        let main_imglist = document.querySelector(".main_imglist");
+        let modeSct = document.querySelector(".select_mode");
+        let H = 675;
+        let W = 675;
+        oC = document.getElementById('c1');
+        let gd = oC.getContext('2d');
+
+        let clipPoints =[];
+        let pointNum = modeSct.value;
+        uploadBtn.addEventListener("click",function(){
+          uploadImg.click();
+        });
+
+        modeSct.addEventListener("change",function(event,value){
+          pointNum = modeSct.value;
+        });
+        randomBtn.addEventListener("click",function(){
+          oC.width = W;
+          oC.height = H;
+          clipPoints=[];
+          clipPoints = initPoints();
+          for(let num =0;num<pointNum;num++){
+            clipPoints = addRamdomPoint(clipPoints);
+          }
+          imglist.innerHTML="";
+          main_imglist.innerHTML="";
+          for(let i = 0; i<clipPoints.length; i++){
+            fillList(clipPoints[i]);
+          }
+
+          gd.rect(0,0,oC.width,oC.height);
+          gd.strokeStyle="#6c757d";
+          gd.lineWidth = 2;
+          gd.stroke();
+        });
+
+        saveImgBtn.addEventListener("click",function(){
+          let imglist = document.querySelector(".imglist");
+          let imgs = imglist.children;
+          for(let i=0;i<imgs.length;i++){
+            let img = imgs[i].children[0];
+            let a = document.createElement("a");
+            let event = new MouseEvent("click");
+            a.download = i+"_"+img.name;
+            a.href = img.src;
+            a.dispatchEvent(event);
+          }
+        });
+
+        uploadImg.addEventListener("change",function(e){
+          if(uploadImg.files.length>0){
+            let reader = new FileReader();
+            reader.onload = function(){
+              let oImg = document.createElement("img");
+              oImg.src = this.result;
+              oImg.className="mainImg_O";
+              oImg.onload=function(e){
+        					var scale = H/oImg.height;
+                  oC.width = oImg.width * scale;
+                  clipPoints=[];
+                  clipPoints = initPoints();
+                  for(let num =0;num<pointNum;num++){
+                    clipPoints = addRamdomPoint(clipPoints);
+                  }
+                  imglist.innerHTML="";
+                  main_imglist.innerHTML="";
+                  for(let i = 0; i<clipPoints.length; i++){
+                    clipImgList(oImg,scale,clipPoints[i]);
+                  }
+               }
+            }
+            reader.readAsDataURL(uploadImg.files[0]);
+          }
+        })
+
+        function initPoints(){
+          let _clipPoints =[];
+          _clipPoints.push({x1:oC.offsetLeft,y1:oC.offsetTop,x2:oC.offsetLeft + oC.width,y2:oC.offsetTop,x3:0,y3:0});
+          _clipPoints.push({x1:oC.offsetLeft + oC.width,y1:oC.offsetTop,x2:oC.offsetLeft + oC.width,y2:oC.offsetTop + oC.height,x3:0,y3:0});
+          _clipPoints.push({x1:oC.offsetLeft + oC.width,y1: oC.offsetTop + oC.height,x2:oC.offsetLeft,y2:oC.offsetTop + oC.height,x3:0,y3:0});
+          _clipPoints.push({x1:oC.offsetLeft,y1: oC.offsetTop + oC.height,x2:oC.offsetLeft,y2:oC.offsetTop,x3:0,y3:0});
+
+          return _clipPoints;
+        }
+
+        function addRamdomPoint(_clipPoints){
+          let point = {
+            x: getRandomInt(oC.offsetLeft,oC.offsetLeft + oC.width),
+            y: getRandomInt(oC.offsetTop,oC.offsetTop + oC.height)
+          }
+          console.log("point",point);
+
+          let processPoints = _clipPoints.concat();
+          console.log("init",_clipPoints);
+          for(let i =0;i<_clipPoints.length;i++){
+            if(_clipPoints[i].x3 == 0 && _clipPoints[i].y3 == 0){
+              _clipPoints[i].x3 = point.x;
+              _clipPoints[i].y3 = point.y;
+            }else{
+              if(pointInTriangle(_clipPoints[i],point)){
+                let processPoint = _clipPoints[i];
+                console.log("processPoints",processPoints);
+                console.log("remove point",_clipPoints[i]);
+                processPoints.splice(i,1);
+                processPoints.push({x1:processPoint.x1,y1:processPoint.y1,x2:processPoint.x2,y2:processPoint.y2,x3:point.x,y3:point.y});
+                processPoints.push({x1:processPoint.x2,y1:processPoint.y2,x2:processPoint.x3,y2:processPoint.y3,x3:point.x,y3:point.y});
+                processPoints.push({x1:processPoint.x3,y1:processPoint.y3,x2:processPoint.x1,y2:processPoint.y1,x3:point.x,y3:point.y});
+                break;
+              }
+            }
+          }
+
+          _clipPoints = processPoints;
+
+          console.log(_clipPoints);
+          return _clipPoints;
+        }
+
+        function inTheRange(_clipPoint,_point){
+          let result = maxMinXY(_clipPoint);
+          if(_point.x>result.minx&&_point.x<result.maxx&&_point.y>result.miny&&_point.y<result.maxy){
+            return true;
+          }else{
+            return false;
+          }
+        }
+
+        function pointInTriangle(_clipPoint,_point) {
+          console.log("Tina",_clipPoint,_point);
+         let divisor = (_clipPoint.y2 - _clipPoint.y3)*(_clipPoint.x1 - _clipPoint.x3) + (_clipPoint.x3 - _clipPoint.x2)*(_clipPoint.y1 - _clipPoint.y3);
+         let a = ((_clipPoint.y2 - _clipPoint.y3)*(_point.x - _clipPoint.x3) + (_clipPoint.x3 - _clipPoint.x2)*(_point.y - _clipPoint.y3)) / divisor;
+         let b = ((_clipPoint.y3 - _clipPoint.y1)*(_point.x - _clipPoint.x3) + (_clipPoint.x1 - _clipPoint.x3)*(_point.y - _clipPoint.y3)) / divisor;
+         let c = 1 - a - b;
+
+         return a >= 0 && a <= 1 && b >= 0 && b <= 1 && c >= 0 && c <= 1;
+     }
+
+        function maxMinXY(_clipPoint){
+          let xs = [_clipPoint.x1,_clipPoint.x2,_clipPoint.x3];
+          let ys = [_clipPoint.y1,_clipPoint.y2,_clipPoint.y3];
+
+          return {
+            minx:Math.min.apply(null, xs),
+            miny:Math.min.apply(null, ys),
+            maxx:Math.max.apply(null, xs),
+            maxy:Math.max.apply(null, ys)
+          }
+        }
+
+        function clipImgList(oImg,scale,point){
+          gd.save();
+          gd.clearRect(0,0,oC.width,oC.height);
+          //console.log(oC.offsetLeft,oC.offsetTop,oC.width,oC.height);
+          clip(point);
+          gd.drawImage(oImg,0,0,oImg.width * scale,oImg.height * scale);
+          gd.strokeStyle="#6c757d";
+          gd.lineWidth = 2;
+          addImgInList(oImg,scale,point);
+          gd.restore();
+        }
+
+        function fillList(point){
+          gd.save();
+          gd.clearRect(0,0,oC.width,oC.height);
+          //console.log(oC.offsetLeft,oC.offsetTop,oC.width,oC.height);
+          fill(point);
+          addImgInList(oC,1,point);
+          gd.restore();
+        }
+
+        function addImgInList(oImg,scale,point){
+          let sharpCenter = center(point);
+          let imgName = `${oImg.width * scale}_${oImg.height * scale}_${sharpCenter.x}_${sharpCenter.y}`;
+
+          let oLi = document.createElement("li");
+          oLi.innerHTML ='<img src="" alt="" class="smallImg" name="'+imgName+'">';
+
+          let oImgLi = oLi.children[0];
+          oImgLi.src = document.querySelector("#c1").toDataURL();
+          imglist.appendChild(oLi);
+
+          let oLi_main = document.createElement("li");
+          oLi_main.style="position: absolute;";
+          oLi_main.innerHTML ='<img src="" alt="" class="smallImg" name="'+imgName+'_main">';
+
+          let oImgLi_main = oLi_main.children[0];
+          oImgLi_main.src = document.querySelector("#c1").toDataURL();
+          main_imglist.appendChild(oLi_main);
+        }
+
+       function ramdomPoints(xStart,yStart,xEnd,yEnd){
+         const MaxPoints = 5;
+         let length = getRandomInt(3,MaxPoints);
+         let points =[];
+         for(let i =0;i<length;i++){
+           points.push({
+             x: getRandomInt(xStart,xEnd),
+             y: getRandomInt(yStart,yEnd)
+           })
+         }
+
+         return points;
+       }
+
+       function getRandomInt(min,max) {
+          return min + Math.floor(Math.random() * (max - min));
+       }
+
+       function clip(point){
+         gd.beginPath();
+         gd.moveTo(point.x1,point.y1);
+         gd.lineTo(point.x2,point.y2);
+         gd.lineTo(point.x3,point.y3);
+         gd.lineTo(point.x1,point.y1);
+         gd.closePath();
+         gd.clip();
+       }
+
+       function fill(point){
+         gd.fillStyle="#"+randomColor();
+         gd.strokeStyle="#6c757d";
+         gd.lineWidth = 2;
+         gd.beginPath();
+         gd.moveTo(point.x1,point.y1);
+         gd.lineTo(point.x2,point.y2);
+         gd.lineTo(point.x3,point.y3);
+         gd.lineTo(point.x1,point.y1);
+         gd.closePath();
+
+         gd.fill();
+         gd.stroke();
+       }
+
+       function center(point){
+         return {
+           x:Math.floor((point.x1+point.x2+point.x3)/3),
+           y:Math.floor((point.y1+point.y2+point.y3)/3)
+         }
+       }
+
+       function randomColor(){
+         let color = Math.floor(Math.random()*16777215).toString(16);
+         while(color.length<6) color = '0'+color;
+         return color;
+       }
+      }
+    </script>
+  </head>
+  <body>
+    <div class="container">
+      <div class="left">
+        <div class="upload">
+          <select class="select_mode" name="mode">
+            <option value="2" default>简单模式</option>
+            <option value="3">中等模式</option>
+            <option value="4">复杂模式</option>
+          </select>
+          <button type="button" class="uploadImgBtn" >上传图片</button>
+          <button type="button" class="randomBtn" >随机生成</button>
+          <button type="button" class="saveImgBtn" >保存图片</button>
+          <input type="file" accept="image/*" class="uploadImg"  multiple="false" hidden>
+        </div>
+        <div class="mainImg">
+          <canvas id="c1" width="700" height="450">
+
+          </canvas>
+          <ul class="main_imglist">
+          </ul>
+        </div>
+      </div>
+
+      <div class="right">
+        <div class="shotCutList">
+          <ul class="imglist">
+          </ul>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
